@@ -126,7 +126,7 @@ vec4 rayMarch(vec3 rayOrigin, vec3 rayStep, out vec3 pos)
 
 vec4 effect(vec4 color, sampler2D texture, vec2 tex_coords, vec2 coords)
 {
-    vec2 iResolution = vec2(70, 70);
+    vec2 iResolution = vec2(45, 45);
     vec2 p = (coords.xy / iResolution.xy)*2.0-1.0;
     p.x *= iResolution.x/ iResolution.y;
 

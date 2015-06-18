@@ -12,6 +12,8 @@ from kivy.uix.effectwidget import EffectWidget
 
 from kivy.uix.widget import Widget
 from kivy.clock import Clock
+from kivy.vector import Vector
+
 
 class Background(Widget):
     pass
@@ -32,13 +34,17 @@ class FireballTriangle(EffectWidget):
     pass
 
 
+class Settings(object):
+    GAME_ZONE_TOPLEFT_CORNER = [0, 0],
+    DAMAGE_DISTANCE = 30
+
 type_enemy_map = {
     'circle': EnemyCircle,
     'triangle': EnemyTriangle,
     'box': EnemyBox
 }
 
-effets_map = {
+effects_map = {
     'circle': YellowFireballEffect,
     'triangle': RedFireballEffect,
     'box': GreenFireballEffect,
@@ -50,6 +56,7 @@ class Enemy(object):
     diameter = 25
     type = 'circle'
     state = 'alive'
+    center = Vector(0, 0)
 
     def __init__(self, col):
         self.col = col
@@ -61,6 +68,59 @@ class Enemy(object):
         x, y = self.get_pos()
         y -= self.speed
         self.set_pos([x, y])
+        halfd = float(self.diameter) / 2.0
+        self.center = Vector(x+halfd, y-halfd)
+
+    def set_pos(self, pos):
+        self.widget.pos = pos
+
+    def get_pos(self):
+        return self.widget.pos
+
+class Fireball(object):
+    speed = 0
+    diameter = 45
+    type = 'circle'
+    state = 'alive'
+    dir_vector = Vector(0, 0)
+    center = Vector(0, 0)
+
+    def __init__(self, start_pos, end_pos):
+        xpos = start_pos[0]
+        tlx = Settings.GAME_ZONE_TOPLEFT_CORNER[0]
+
+        if xpos < tlx + 106:
+            self.type = 'triangle'
+        elif xpos < tlx + 106 * 2:
+            self.type = 'box'
+        elif xpos < tlx + 106 * 3:
+            self.type = 'circle'
+        else:
+            raise Exception('Wrong start pos %s' % xpos)
+
+        w = EffectWidget(
+            size = (45, 45),
+            background_color = (0,0,0,0),
+            pos = start_pos
+        )
+        w.effects = [effects_map.get(self.type)()]
+
+        self.widget = w
+
+        self.speed = 5
+        self.dir_vector = (Vector(*end_pos) - Vector(*start_pos)).normalize()
+
+    def move(self):
+        x, y = self.get_pos()
+        shift = self.dir_vector * self.speed
+        self.set_pos((
+            x + shift.x,
+            y + shift.y
+        ))
+        x, y = self.get_pos()
+        halfd = float(self.diameter) / 2.0
+        self.center = Vector(x+halfd, y-halfd)
+        self.center = Vector(x+13, y-13)
 
     def set_pos(self, pos):
         self.widget.pos = pos
@@ -69,21 +129,19 @@ class Enemy(object):
         return self.widget.pos
 
 
-
 class StateManager(object):
     enemies = []
     fireballs = []
-    MIN_SPAWN_INTERVAL = 1
+    MIN_DISTANCE_TO_NEXT = 60
     COL_WIDTH = 106
-    GAME_ZONE_TOPLEFT_CORNER = [0, 0]
-    time_acc = [0, 0, 0]
+    last_enemies = [0, 0, 0]
 
     def __init__(self, root):
         self.root = root
         w, h = self.root.size
 
         bg = Background()
-        self.GAME_ZONE_TOPLEFT_CORNER = [w-320, 480]
+        Settings.GAME_ZONE_TOPLEFT_CORNER = [w-320, 480]
         bg.pos = (w-320, 0)
 
         self.root.add_widget(bg)
@@ -92,33 +150,51 @@ class StateManager(object):
         l.pos = (w-320, 0)
         self.root.add_widget(l)
 
-        f = EffectWidget(
-            size=(100, 100),
-            pos=(w-320, 0),
-            background_color = [0,0,0,0]
-        )
-        f.effects = [GreenFireballEffect()]
-        self.fireballs.append(f)
-        self.root.add_widget(f)
-
     def spawn_fireball(self, start_pos, end_pos):
-        pass
+        f = Fireball(start_pos, end_pos)
+        self.fireballs.append(f)
+        self.root.add_widget(f.widget)
 
     def tick(self, dt):
 
-        for i, v in enumerate(self.time_acc):
-            v += dt
+        for i, e in enumerate(self.last_enemies):
+            tly = Settings.GAME_ZONE_TOPLEFT_CORNER[1]
+            if not e or e.get_pos()[1] < tly - self.MIN_DISTANCE_TO_NEXT - random.randint(0, 120):
+                e = self.spawn_random_enemy(i)
+                self.last_enemies[e.col] = e
 
-            if v > self.MIN_SPAWN_INTERVAL + random.random() * 3.5:
-                self.spawn_random_enemy(i)
-                v = 0
-            self.time_acc[i] = v
-
-        for e in self.enemies:
+        for i, e in enumerate(self.enemies):
+            if e.get_pos()[1] < 60:
+                e.state = 'dying'
+                self.root.remove_widget(e.widget)
+                self.enemies.pop(i)
+                continue
             e.move()
 
-        for f in self.fireballs:
-            pass
+        for i, f in enumerate(self.fireballs):
+            x, y = f.get_pos()
+            tlx = Settings.GAME_ZONE_TOPLEFT_CORNER[0] - 45
+            tly = Settings.GAME_ZONE_TOPLEFT_CORNER[1] + 45
+            if x < tlx or x > tlx + 320 + 45 or y > tly:
+                self.root.remove_widget(f.widget)
+                self.fireballs.pop(i)
+                continue
+            f.move()
+
+            for j, e in enumerate(self.enemies):
+                if e.center.distance(f.center) > Settings.DAMAGE_DISTANCE:
+                    continue
+
+                self.root.remove_widget(f.widget)
+                self.fireballs.pop(i)
+
+                if e.type != f.type:
+                    continue
+
+                self.root.remove_widget(e.widget)
+                self.enemies.pop(j)
+
+                break
 
     def on_slide(self, start_pos, end_pos):
         if start_pos[1] < 60 < end_pos[1]:
@@ -132,12 +208,14 @@ class StateManager(object):
         self.set_initial_enemy_pos(e)
         self.enemies.append(e)
         self.root.add_widget(e.widget)
+        return e
 
     def set_initial_enemy_pos(self, enemy):
         cw = float(self.COL_WIDTH)
-        mid_x = self.GAME_ZONE_TOPLEFT_CORNER[0] + cw * enemy.col + (cw/2.0) - enemy.diameter
-        mid_y = self.GAME_ZONE_TOPLEFT_CORNER[1] + enemy.diameter
-        enemy.set_pos([mid_x, mid_y])
+        tlx, tly = Settings.GAME_ZONE_TOPLEFT_CORNER
+        mid_x = tlx + cw * enemy.col + (cw/2.0) - enemy.diameter
+        mid_y = tly + enemy.diameter
+        enemy.set_pos([mid_x, mid_y + random.randint(0, 220)])
 
 
 
