@@ -50,26 +50,22 @@ effects_map = {
     'box': GreenFireballEffect,
 }
 
-class Enemy(object):
+class AbstractMovable(object):
     speed = 0
-    col = 0
-    diameter = 25
-    type = 'circle'
-    state = 'alive'
     center = Vector(0, 0)
-
-    def __init__(self, col):
-        self.col = col
-        self.type = random.choice(type_enemy_map.keys())
-        self.speed = 1
-        self.widget = type_enemy_map.get(self.type)()
+    dir_vector = Vector(0, -1)
 
     def move(self):
         x, y = self.get_pos()
-        y -= self.speed
-        self.set_pos([x, y])
+        shift = self.dir_vector * self.speed
+        self.set_pos((
+            x + shift.x,
+            y + shift.y
+        ))
+        x, y = self.get_pos()
         halfd = float(self.diameter) / 2.0
         self.center = Vector(x+halfd, y-halfd)
+        self.center = Vector(x+13, y-13)
 
     def set_pos(self, pos):
         self.widget.pos = pos
@@ -77,13 +73,24 @@ class Enemy(object):
     def get_pos(self):
         return self.widget.pos
 
-class Fireball(object):
-    speed = 0
+
+class Enemy(AbstractMovable):
+    col = 0
+    diameter = 25
+    type = 'circle'
+    state = 'alive'
+
+    def __init__(self, col):
+        self.col = col
+        self.type = random.choice(type_enemy_map.keys())
+        self.speed = 1
+        self.widget = type_enemy_map.get(self.type)()
+
+
+class Fireball(AbstractMovable):
     diameter = 45
     type = 'circle'
     state = 'alive'
-    dir_vector = Vector(0, 0)
-    center = Vector(0, 0)
 
     def __init__(self, start_pos, end_pos):
         xpos = start_pos[0]
@@ -109,24 +116,6 @@ class Fireball(object):
 
         self.speed = 5
         self.dir_vector = (Vector(*end_pos) - Vector(*start_pos)).normalize()
-
-    def move(self):
-        x, y = self.get_pos()
-        shift = self.dir_vector * self.speed
-        self.set_pos((
-            x + shift.x,
-            y + shift.y
-        ))
-        x, y = self.get_pos()
-        halfd = float(self.diameter) / 2.0
-        self.center = Vector(x+halfd, y-halfd)
-        self.center = Vector(x+13, y-13)
-
-    def set_pos(self, pos):
-        self.widget.pos = pos
-
-    def get_pos(self):
-        return self.widget.pos
 
 
 class StateManager(object):
@@ -159,7 +148,8 @@ class StateManager(object):
 
         for i, e in enumerate(self.last_enemies):
             tly = Settings.GAME_ZONE_TOPLEFT_CORNER[1]
-            if not e or e.get_pos()[1] < tly - self.MIN_DISTANCE_TO_NEXT - random.randint(0, 120):
+            dist = self.MIN_DISTANCE_TO_NEXT + random.randint(0, 120)
+            if not e or e.get_pos()[1] < tly - dist:
                 e = self.spawn_random_enemy(i)
                 self.last_enemies[e.col] = e
 
