@@ -1,0 +1,65 @@
+#:kivy 1.0.9
+
+<Background>:
+    canvas:
+        Rectangle:
+            id: bg_image
+            pos: self.pos
+            size: 320, 480
+            source: 'bg.jpg'
+
+<EnemyCircle>:
+    canvas:
+        Color:
+            rgba: 1, 1, 0, 1
+        Rectangle:
+            pos: self.pos
+            size: 25, 25
+            source: 'circle.png'
+
+<EnemyBox>:
+    canvas:
+        Color:
+            rgba: 0, 1, 0, 1
+        Rectangle:
+            pos: self.pos
+            size: 25, 25
+            source: 'rectangle.png'
+
+<EnemyTriangle>:
+    canvas:
+        Color:
+            rgba: 1, 0, 0, 1
+        Rectangle:
+            pos: self.pos
+            size: 25, 25
+            source: 'triangle.png'
+
+
+<FireballTriangle>:
+    Button:
+        pos: self.pos
+        size: 400, 400
+        text: 'Hello!'
+
+
+<Launchers>:
+    canvas:
+        Color:
+            rgba: 1, 0, 0, 0.5
+        Rectangle:
+            pos: self.pos
+            size: 106, 60
+        Color:
+            rgba: 0, 1, 0, 0.5
+        Rectangle:
+            pos: self.pos[0]+106, self.pos[1]
+            size: 106, 60
+        Color:
+            rgba: 1, 1, 0, 0.5
+        Rectangle:
+            pos: self.pos[0]+212, self.pos[1]
+            size: 106, 60
+        Color:
+            rgba: 0, 0, 0, 1
+
