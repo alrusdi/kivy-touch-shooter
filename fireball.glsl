@@ -128,7 +128,7 @@ vec4 effect(vec4 color, sampler2D texture, vec2 tex_coords, vec2 coords)
 {
     vec2 iResolution = vec2(45, 45);
     vec2 p = (coords.xy / iResolution.xy)*2.0-1.0;
-    p.x *= iResolution.x/ iResolution.y;
+    p.x *= iResolution.x / iResolution.y;
 
     float rotx = (200.0 / iResolution.y)*4.0;
     float roty = -(200.0 / iResolution.x)*4.0;
